@@ -1,41 +1,36 @@
 <div align="center">
   <h1>termcpy</h1>
-
-  <p><strong>Mirror and control Android devices in your terminal</strong></p>
-
   <p>
-    <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
-    <img alt="Rust" src="https://img.shields.io/badge/rust-1.85%2B-orange">
-    <img alt="Edition" src="https://img.shields.io/badge/edition-2024-blue">
+    Mirror and control Android devices in your terminal
   </p>
 
   <p>
-    <a href="#install">Install</a>
-    &nbsp;·&nbsp;
-    <a href="#quickstart">Quickstart</a>
+    <a href="https://github.com/cesarferreira/termcpy/actions/workflows/rust-tests.yml"><img alt="CI" src="https://github.com/cesarferreira/termcpy/actions/workflows/rust-tests.yml/badge.svg"></a>
+    <a href="https://crates.io/crates/termcpy"><img alt="Crates.io" src="https://img.shields.io/crates/v/termcpy"></a>
+    <img alt="Rust" src="https://img.shields.io/badge/rust-1.85%2B-orange">
+    <img alt="Edition" src="https://img.shields.io/badge/edition-2024-blue">
+    <img alt="scrcpy" src="https://img.shields.io/badge/scrcpy-4.x%20%7C%205.x-3ddc84">
+    <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
   </p>
 </div>
 
----
-
 ## Install
 
-Requires [Rust](https://rustup.rs) **1.85+**, `adb`, `scrcpy` **4.x or 5.x**, and `ffmpeg` on your `PATH`. Tested on macOS with scrcpy **5.0** and an Android emulator. A terminal with mouse reporting and truecolour support gives the best experience. Android must have USB debugging enabled and the computer authorized.
-
-On macOS:
-
-```bash
-brew install scrcpy ffmpeg
-```
-
-Install from [crates.io](https://crates.io/crates/termcpy):
+From [crates.io](https://crates.io/crates/termcpy):
 
 ```bash
 cargo install termcpy --locked
 ```
 
-<a id="quickstart"></a>
-## Quickstart
+Prebuilt binaries for macOS, Linux, and Windows are on the [releases page](https://github.com/cesarferreira/termcpy/releases).
+
+Install the runtime tools. On macOS:
+
+```bash
+brew install scrcpy ffmpeg
+```
+
+## Quick start
 
 ```bash
 # Mirror the only connected Android device
@@ -57,7 +52,27 @@ termcpy --demo
 termcpy --snapshot --render ascii --no-color --cols 120 --rows 50
 ```
 
-### Controls
+## Options
+
+| Flag | Description |
+| --- | --- |
+| `-s, --serial <SERIAL>` | Select an Android device by its adb serial |
+| `--list-devices` | Show connected adb devices and exit |
+| `--demo` | Render a synthetic phone screen without external tools |
+| `--snapshot` | Print one character frame and exit (works without a TTY) |
+| `--render <MODE>` | `graphics`, `blocks`, or `ascii` (default: graphics when supported, otherwise blocks) |
+| `--no-color` | Monochrome rendering (ASCII output contains no ANSI colours) |
+| `--invert` | Reverse the brightness mapping |
+| `--ramp <CHARS>` | ASCII characters from dark to bright (default `" .:-=+*#%@"`) |
+| `--char-aspect <RATIO>` | Character width divided by height (default `0.5`) |
+| `-m, --max-size <PX>` | Longest captured edge in pixels (default 2048, or 1280 over SSH) |
+| `--max-fps <FPS>` | Capture and display frame rate (default 30, or 15 over SSH) |
+| `--cols <N>`, `--rows <N>` | Snapshot canvas size in characters (default 120×50) |
+| `--server <PATH>` | Path to `scrcpy-server` |
+| `--server-version <VER>` | Exact server version |
+| `--adb`, `--scrcpy`, `--ffmpeg` | Executable paths (default: found on `PATH`) |
+
+## Controls
 
 | Input | Action |
 | --- | --- |
@@ -70,47 +85,78 @@ termcpy --snapshot --render ascii --no-color --cols 120 --rows 50
 | `p` | Power button |
 | Arrow keys | Android directional keys |
 | Enter / Backspace | Android Enter / Delete |
-| `t` | Enter text mode; type or paste, then Enter to send; Escape cancels |
+| `t` | Text mode: type or paste, Enter sends, Escape cancels |
 | `a` | Cycle graphics (when enabled), ASCII, and blocks |
-| `c` | Toggle colour (blocks use grayscale when disabled) |
-| `i` | Invert character brightness |
+| `c` | Toggle colour (grayscale when disabled) |
+| `i` | Invert brightness |
 | `q` / Ctrl+C | Quit |
 
-The default renderer is full pixel graphics, for readable phone text, in terminals that support the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/). The app probes the terminal before connecting. If the terminal does not confirm support, it uses coloured blocks instead. With an explicit `--render graphics`, a failed probe is an error. Each frame is scaled to the pixels the terminal displays, then sent as zlib-compressed RGB. A frame identical to the one on screen is not sent again. Capture defaults to a 2048-pixel longest edge; use `--max-size 4096` for more source detail if needed. Maximize the window for more displayed pixels. Graphics requires an interactive Unix terminal. `--snapshot` uses blocks unless you choose `--render ascii`. Terminal multiplexers may need graphics passthrough support.
+Clicks map to the centre of each character cell. The view preserves the phone's proportions and follows terminal resizes and device rotation.
 
-`--render blocks` uses coloured half-block characters, preserving two independent pixels per terminal cell. Use `--render ascii` for literal ASCII; it suppresses dark background speckle and lifts dim foreground colours. Text modes redraw only the lines that changed. Press `a` to switch modes during a session.
+Text mode uses scrcpy's text injection. Android input-method limits apply: arbitrary Unicode, emoji, and composing input are not guaranteed.
 
-### Over SSH
+## Renderers
 
-Every frame crosses the network. When `SSH_CONNECTION` or `SSH_TTY` is set, the defaults change to a 1280-pixel capture at 15 FPS. Locally they are 2048 pixels at 30 FPS. `--max-size` and `--max-fps` override either profile. Set `TERMCPY_REMOTE=1` or `0` to force the choice, for example inside a multiplexer that hides SSH.
+- **graphics** (default): full pixels through the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/), so phone text stays readable. Each frame is scaled to the pixels the terminal displays and sent as zlib-compressed RGB. A frame identical to the one on screen is not sent again.
+- **blocks**: coloured half-block characters, two pixels per cell.
+- **ascii**: literal ASCII. It suppresses dark background speckle and lifts dim foreground colours.
 
-The header shows two rates: `phone` is frames decoded from the device, and `sent` is frames written to the terminal. A low `phone` rate means the device or emulator is slow. If `sent` keeps up but the picture still lags, the terminal or the link to it is the bottleneck.
+termcpy probes the terminal before connecting. If the terminal does not confirm Kitty graphics support, it uses blocks. With an explicit `--render graphics`, a failed probe is an error. `--snapshot` uses blocks unless you choose `--render ascii`. Text modes redraw only the lines that changed.
 
-Clicks map to the centre of each character cell. The view preserves the phone's proportions and responds to terminal resizing and device rotation. Reduce the terminal font size for more detail. `--char-aspect` adjusts character proportions (default `0.5`); `--ramp` sets the ASCII characters from dark to bright.
+> [!TIP]
+> Maximize the window for more displayed pixels, or use `--max-size 4096` for more source detail. In text modes, a smaller font gives more detail.
 
-Text mode uses scrcpy's text injection. Android input-method limitations apply: arbitrary Unicode, emoji, and composing input are not guaranteed. This is a visual conversion of the phone's pixels; ASCII and block modes cannot preserve small UI text as readable text; graphics displays the actual pixels without OCR. Audio, clipboard synchronization, and multitouch are outside this first version.
+ASCII and block modes cannot keep small UI text readable; graphics shows the actual pixels. Audio, clipboard sync, and multitouch are not supported yet.
 
-### Server discovery
+## Over SSH
 
-The client uses `scrcpy --version` and finds the matching server beside the installed scrcpy executable or in common Homebrew/Linux locations. `SCRCPY_SERVER_PATH` is supported. For a custom install:
+Every frame crosses the network. When `SSH_CONNECTION` or `SSH_TTY` is set, the defaults change to a 1280-pixel capture at 15 FPS. Locally they are 2048 pixels at 30 FPS. `--max-size` and `--max-fps` override either profile.
+
+Force the choice where SSH is hidden, for example inside a multiplexer:
+
+```bash
+TERMCPY_REMOTE=1 termcpy
+```
+
+The header shows two rates: `phone` is frames decoded from the device, and `sent` is frames written to the terminal.
+
+## Server discovery
+
+termcpy runs `scrcpy --version` and finds the matching server beside the scrcpy executable or in common Homebrew and Linux locations. `SCRCPY_SERVER_PATH` is also supported. For a custom install:
 
 ```bash
 termcpy --server /path/to/scrcpy-server --server-version 5.0
 ```
 
-`--adb`, `--scrcpy`, and `--ffmpeg` accept executable paths. ADB-over-network devices work when already listed by `adb devices`. The server version must match the supplied server file exactly. The internal scrcpy protocol may change; 4.x and 5.x are supported, with 5.0 verified locally.
+The server version must match the server file exactly. ADB-over-network devices work when `adb devices` already lists them.
 
-### How it works
+## How it works
 
 ```text
 Android screen → scrcpy H264 stream → FFmpeg → RGB frames → terminal (Kitty graphics, blocks or ASCII)
 Android touch  ← scrcpy control socket ← terminal mouse coordinates
 ```
 
-The renderer uses the same brightness mapping, per-cell RGB colour, and character-aspect approach as [ascii-cam](https://github.com/cesarferreira/ascii-cam). It averages the pixels in each character cell. [scrcpy](https://github.com/Genymobile/scrcpy) supplies screen capture and Android input. Capture-session metadata triggers a decoder restart when the phone rotates, preserving the geometry used for touch messages.
+[scrcpy](https://github.com/Genymobile/scrcpy) supplies screen capture and Android input. A rotation restarts the decoder, so touch coordinates keep matching the screen. The ASCII renderer uses the brightness mapping, per-cell colour, and character-aspect approach of [ascii-cam](https://github.com/cesarferreira/ascii-cam).
 
-The session starts its own server and ADB tunnel. Normal exit, Ctrl+C, SIGTERM, and (on Unix) SIGHUP restore the terminal and remove those session resources.
+Each session starts its own server and ADB tunnel. Normal exit, Ctrl+C, SIGTERM, and (on Unix) SIGHUP restore the terminal and remove them.
+
+## Requirements
+
+- `adb`, `scrcpy` **4.x or 5.x**, and `ffmpeg` on your `PATH` (tested with scrcpy 5.0)
+- An Android device or emulator with USB debugging enabled and this computer authorized
+- For graphics: a Unix terminal with Kitty graphics support, such as kitty, Ghostty, or WezTerm
+- For text modes: mouse reporting and truecolour support
+- Rust **1.85+** to build from source
+
+## Troubleshooting
+
+- **Blocks instead of graphics:** the terminal did not confirm Kitty graphics support. Multiplexers such as tmux need graphics passthrough. Run `termcpy --render graphics` to see the probe error.
+- **Laggy picture:** check the header rates. A low `phone` rate means the device or emulator is slow. If `sent` keeps up but the picture still lags, the terminal or the link to it is the bottleneck. Try `--max-size 800 --max-fps 10`.
+- **No authorized Android device:** check `adb devices` and approve USB debugging on the device.
+- **Multiple devices connected:** pick one with `--serial`.
+- **scrcpy server not found:** pass `--server` and `--server-version`, or set `SCRCPY_SERVER_PATH`.
 
 ## License
 
-MIT
+MIT. See `LICENSE`.
