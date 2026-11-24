@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2026-11-24
+
+### 📚 Documentation
+
+- Restyle README with options, requirements and troubleshooting
 ## [0.1.0] - 2026-11-24
 
 ### 🚀 Features
