@@ -84,6 +84,8 @@ The default renderer is full pixel graphics, for readable phone text, in termina
 
 Every frame crosses the network. When `SSH_CONNECTION` or `SSH_TTY` is set, the defaults change to a 1280-pixel capture at 15 FPS. Locally they are 2048 pixels at 30 FPS. `--max-size` and `--max-fps` override either profile. Set `SCREEN_ASCII_REMOTE=1` or `0` to force the choice, for example inside a multiplexer that hides SSH.
 
+The header shows two rates: `phone` is frames decoded from the device, and `sent` is frames written to the terminal. A low `phone` rate means the device or emulator is slow. If `sent` keeps up but the picture still lags, the terminal or the link to it is the bottleneck.
+
 Clicks map to the centre of each character cell. The view preserves the phone's proportions and responds to terminal resizing and device rotation. Reduce the terminal font size for more detail. `--char-aspect` adjusts character proportions (default `0.5`); `--ramp` sets the ASCII characters from dark to bright.
 
 Text mode uses scrcpy's text injection. Android input-method limitations apply: arbitrary Unicode, emoji, and composing input are not guaranteed. This is a visual conversion of the phone's pixels; ASCII and block modes cannot preserve small UI text as readable text; graphics displays the actual pixels without OCR. Audio, clipboard synchronization, and multitouch are outside this first version.

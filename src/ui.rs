@@ -13,7 +13,7 @@ use crossterm::{
     },
 };
 use screen_ascii::{
-    frame::Frame, geometry::Viewport, graphics, input::TouchState, protocol, render,
+    fps::FpsMeter, frame::Frame, geometry::Viewport, graphics, input::TouchState, protocol, render,
     session::Session,
 };
 use std::{
@@ -135,6 +135,11 @@ pub fn run(
     let mut force_draw = true;
     let mut typing: Option<String> = None;
     let mut screen = Screen::default();
+    // Frames decoded from the phone, and frames actually sent to the terminal. A gap between
+    // them means the terminal link is the bottleneck; a low phone rate means the device is.
+    let mut phone_fps = FpsMeter::new(Instant::now());
+    let mut sent_fps = FpsMeter::new(Instant::now());
+    let mut seen_sequence = 0;
     let interval = Duration::from_secs_f64(1.0 / f64::from(options.fps));
     loop {
         if cancelled.load(Ordering::Relaxed) {
@@ -149,6 +154,12 @@ pub fn run(
                 Some(Arc::new(demo_frame(elapsed))),
             )
         };
+        phone_fps.add(sequence.saturating_sub(seen_sequence) as u32);
+        seen_sequence = sequence;
+        let now = Instant::now();
+        if phone_fps.tick(now) | sent_fps.tick(now) {
+            force_draw = true
+        }
         let size = terminal::size()?;
         if size != last_size {
             force_draw = true
@@ -178,15 +189,22 @@ pub fn run(
                     .as_ref()
                     .map(|session| session.serial.as_str())
                     .unwrap_or("demo");
-                screen.draw(
+                let stats = format!(
+                    "phone {} fps · sent {} fps",
+                    phone_fps.rate(),
+                    sent_fps.rate()
+                );
+                if screen.draw(
                     &mut out,
                     &frame,
                     viewport,
                     size,
                     &options,
-                    label,
+                    &format!("{label} | {stats}"),
                     typing.as_deref(),
-                )?;
+                )? {
+                    sent_fps.add(1);
+                }
                 view = Some(viewport);
                 last_size = size;
                 last_sequence = sequence;
@@ -362,7 +380,7 @@ impl Screen {
         options: &Options,
         label: &str,
         typing: Option<&str>,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         let layout = (size, view, options.mode, options.color, options.invert);
         let full = self.layout != Some(layout);
         queue!(out, BeginSynchronizedUpdate)?;
@@ -449,7 +467,8 @@ impl Screen {
             self.footer = footer;
         }
         queue!(out, EndSynchronizedUpdate)?;
-        out.flush().context("draw terminal frame")
+        out.flush().context("draw terminal frame")?;
+        Ok(!unchanged)
     }
 }
 

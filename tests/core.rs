@@ -193,3 +193,21 @@ fn repeated_colours_are_sent_once_per_line() {
     let ascii = &detailed_lines(&frame, view, " .#", true, false, Mode::Ascii)[0];
     assert_eq!(ascii.matches("\x1b[38;2;").count(), 1);
 }
+
+#[test]
+fn fps_meter_reports_frames_per_second_once_a_window_closes() {
+    use screen_ascii::fps::FpsMeter;
+    use std::time::{Duration, Instant};
+    let start = Instant::now();
+    let mut meter = FpsMeter::new(start);
+    meter.add(10);
+    meter.add(5);
+    assert!(!meter.tick(start + Duration::from_millis(900)));
+    assert_eq!(meter.rate(), 0);
+    assert!(meter.tick(start + Duration::from_millis(1500)));
+    assert_eq!(meter.rate(), 10);
+    // An idle window drops to zero; an unchanged rate reports no change.
+    assert!(meter.tick(start + Duration::from_millis(2500)));
+    assert_eq!(meter.rate(), 0);
+    assert!(!meter.tick(start + Duration::from_millis(3500)));
+}

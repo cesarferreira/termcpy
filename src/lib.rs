@@ -1,3 +1,4 @@
+pub mod fps;
 pub mod frame;
 pub mod geometry;
 pub mod protocol;
