@@ -1,6 +1,6 @@
 use std::process::Command;
 fn run(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_screen-ascii"))
+    Command::new(env!("CARGO_BIN_EXE_termcpy"))
         .args(args)
         .output()
         .unwrap()

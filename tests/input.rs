@@ -1,5 +1,5 @@
 use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
-use screen_ascii::{
+use termcpy::{
     geometry::Viewport,
     input::TouchState,
     session::{parse_version, select_device},

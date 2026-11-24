@@ -1,5 +1,5 @@
-use screen_ascii::{frame::read_ppm, geometry::Viewport, protocol, render};
 use std::io::Cursor;
+use termcpy::{frame::read_ppm, geometry::Viewport, protocol, render};
 
 #[test]
 fn portrait_view_is_centered_with_character_aspect_and_rejects_margins() {
@@ -71,7 +71,7 @@ fn malformed_or_truncated_frames_are_rejected_without_large_allocations() {
 
 #[test]
 fn rendering_averages_pixels_and_can_emit_plain_or_truecolor_ascii() {
-    let frame = screen_ascii::frame::Frame {
+    let frame = termcpy::frame::Frame {
         width: 2,
         height: 1,
         rgb: vec![0, 0, 0, 255, 255, 255],
@@ -124,8 +124,8 @@ fn long_text_is_truncated_on_a_utf8_boundary() {
 
 #[test]
 fn block_rendering_keeps_top_and_bottom_colours_in_each_cell() {
-    use screen_ascii::render::{Mode, detailed_lines};
-    let frame = screen_ascii::frame::Frame {
+    use termcpy::render::{Mode, detailed_lines};
+    let frame = termcpy::frame::Frame {
         width: 1,
         height: 2,
         rgb: vec![255, 0, 0, 0, 0, 255],
@@ -152,8 +152,8 @@ fn block_rendering_keeps_top_and_bottom_colours_in_each_cell() {
 
 #[test]
 fn ascii_ui_background_is_quiet_and_dark_detail_stays_visible() {
-    use screen_ascii::render::{Mode, detailed_lines};
-    let frame = screen_ascii::frame::Frame {
+    use termcpy::render::{Mode, detailed_lines};
+    let frame = termcpy::frame::Frame {
         width: 2,
         height: 1,
         rgb: vec![25, 25, 25, 70, 70, 70],
@@ -172,8 +172,8 @@ fn ascii_ui_background_is_quiet_and_dark_detail_stays_visible() {
 
 #[test]
 fn repeated_colours_are_sent_once_per_line() {
-    use screen_ascii::render::{Mode, detailed_lines};
-    let frame = screen_ascii::frame::Frame {
+    use termcpy::render::{Mode, detailed_lines};
+    let frame = termcpy::frame::Frame {
         width: 4,
         height: 2,
         rgb: [[10, 20, 30]; 8].concat(),
@@ -196,8 +196,8 @@ fn repeated_colours_are_sent_once_per_line() {
 
 #[test]
 fn fps_meter_reports_frames_per_second_once_a_window_closes() {
-    use screen_ascii::fps::FpsMeter;
     use std::time::{Duration, Instant};
+    use termcpy::fps::FpsMeter;
     let start = Instant::now();
     let mut meter = FpsMeter::new(start);
     meter.add(10);

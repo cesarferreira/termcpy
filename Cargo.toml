@@ -1,15 +1,15 @@
 [package]
-name = "screen-ascii"
+name = "termcpy"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Control Android devices through a live ASCII terminal"
+description = "Mirror and control Android devices in your terminal"
 license = "MIT"
 authors = ["Cesar Ferreira"]
-repository = "https://github.com/cesarferreira/screen-ascii"
+repository = "https://github.com/cesarferreira/termcpy"
 
 [[bin]]
-name = "screen-ascii"
+name = "termcpy"
 path = "src/main.rs"
 
 [dependencies]

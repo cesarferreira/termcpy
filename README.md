@@ -1,7 +1,7 @@
 <div align="center">
-  <h1>screen-ascii</h1>
+  <h1>termcpy</h1>
 
-  <p><strong>Control Android devices through a live ASCII terminal</strong></p>
+  <p><strong>Mirror and control Android devices in your terminal</strong></p>
 
   <p>
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
@@ -28,10 +28,10 @@ On macOS:
 brew install scrcpy ffmpeg
 ```
 
-Install from [crates.io](https://crates.io/crates/screen-ascii):
+Install from [crates.io](https://crates.io/crates/termcpy):
 
 ```bash
-cargo install screen-ascii --locked
+cargo install termcpy --locked
 ```
 
 <a id="quickstart"></a>
@@ -39,22 +39,22 @@ cargo install screen-ascii --locked
 
 ```bash
 # Mirror the only connected Android device
-screen-ascii
+termcpy
 
 # Choose a device when several are connected
-screen-ascii --list-devices
-screen-ascii --serial emulator-5554
+termcpy --list-devices
+termcpy --serial emulator-5554
 
 # Coloured blocks, literal ASCII, or a smaller capture at 15 FPS
-screen-ascii --render blocks
-screen-ascii --render ascii --no-color
-screen-ascii --max-size 640 --max-fps 15
+termcpy --render blocks
+termcpy --render ascii --no-color
+termcpy --max-size 640 --max-fps 15
 
 # Try the renderer without a phone
-screen-ascii --demo
+termcpy --demo
 
 # Print one frame without entering the interactive terminal
-screen-ascii --snapshot --render ascii --no-color --cols 120 --rows 50
+termcpy --snapshot --render ascii --no-color --cols 120 --rows 50
 ```
 
 ### Controls
@@ -82,7 +82,7 @@ The default renderer is full pixel graphics, for readable phone text, in termina
 
 ### Over SSH
 
-Every frame crosses the network. When `SSH_CONNECTION` or `SSH_TTY` is set, the defaults change to a 1280-pixel capture at 15 FPS. Locally they are 2048 pixels at 30 FPS. `--max-size` and `--max-fps` override either profile. Set `SCREEN_ASCII_REMOTE=1` or `0` to force the choice, for example inside a multiplexer that hides SSH.
+Every frame crosses the network. When `SSH_CONNECTION` or `SSH_TTY` is set, the defaults change to a 1280-pixel capture at 15 FPS. Locally they are 2048 pixels at 30 FPS. `--max-size` and `--max-fps` override either profile. Set `TERMCPY_REMOTE=1` or `0` to force the choice, for example inside a multiplexer that hides SSH.
 
 The header shows two rates: `phone` is frames decoded from the device, and `sent` is frames written to the terminal. A low `phone` rate means the device or emulator is slow. If `sent` keeps up but the picture still lags, the terminal or the link to it is the bottleneck.
 
@@ -95,7 +95,7 @@ Text mode uses scrcpy's text injection. Android input-method limitations apply: 
 The client uses `scrcpy --version` and finds the matching server beside the installed scrcpy executable or in common Homebrew/Linux locations. `SCRCPY_SERVER_PATH` is supported. For a custom install:
 
 ```bash
-screen-ascii --server /path/to/scrcpy-server --server-version 5.0
+termcpy --server /path/to/scrcpy-server --server-version 5.0
 ```
 
 `--adb`, `--scrcpy`, and `--ffmpeg` accept executable paths. ADB-over-network devices work when already listed by `adb devices`. The server version must match the supplied server file exactly. The internal scrcpy protocol may change; 4.x and 5.x are supported, with 5.0 verified locally.
@@ -103,7 +103,7 @@ screen-ascii --server /path/to/scrcpy-server --server-version 5.0
 ### How it works
 
 ```text
-Android screen → scrcpy H264 stream → FFmpeg → RGB frames → ASCII terminal
+Android screen → scrcpy H264 stream → FFmpeg → RGB frames → terminal (Kitty graphics, blocks or ASCII)
 Android touch  ← scrcpy control socket ← terminal mouse coordinates
 ```
 

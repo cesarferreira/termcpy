@@ -1,11 +1,11 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 use flate2::read::ZlibDecoder;
-use screen_ascii::{
+use std::io::Read;
+use termcpy::{
     frame::Frame,
     geometry::Viewport,
     graphics::{self, Canvas},
 };
-use std::io::Read;
 
 /// Split a wire capture into (first header, decoded pixels) for each transmitted image.
 fn images(wire: &str) -> Vec<(String, Vec<u8>)> {

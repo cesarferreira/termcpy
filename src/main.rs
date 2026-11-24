@@ -1,15 +1,15 @@
 mod ui;
 use anyhow::{Context, Result, ensure};
 use clap::Parser;
-use screen_ascii::{
-    render::Mode,
-    session::{Config, Session},
-};
 use std::{
     io::IsTerminal,
     path::PathBuf,
     process::Command,
     sync::{Arc, atomic::AtomicBool},
+};
+use termcpy::{
+    render::Mode,
+    session::{Config, Session},
 };
 
 #[derive(Parser, Debug)]
@@ -112,13 +112,13 @@ fn main() -> Result<()> {
     signal_hook::flag::register(signal_hook::consts::SIGHUP, Arc::clone(&cancelled))?;
     let mode = match cli.render {
         Some(Mode::Graphics) => {
-            screen_ascii::graphics::check_terminal(&cancelled)?;
+            termcpy::graphics::check_terminal(&cancelled)?;
             Mode::Graphics
         }
         Some(mode) => mode,
         None if cli.snapshot => Mode::Blocks,
         // Prefer real pixels, and fall back to blocks where the terminal cannot show them.
-        None => match screen_ascii::graphics::check_terminal(&cancelled) {
+        None => match termcpy::graphics::check_terminal(&cancelled) {
             Ok(()) => Mode::Graphics,
             Err(_) => Mode::Blocks,
         },
@@ -161,9 +161,9 @@ fn main() -> Result<()> {
 }
 
 /// Over SSH every frame crosses the network, so capture fewer, smaller frames.
-/// `SCREEN_ASCII_REMOTE=1` or `0` overrides detection, for example inside a multiplexer.
+/// `TERMCPY_REMOTE=1` or `0` overrides detection, for example inside a multiplexer.
 fn is_remote() -> bool {
-    match std::env::var("SCREEN_ASCII_REMOTE").as_deref() {
+    match std::env::var("TERMCPY_REMOTE").as_deref() {
         Ok("1") => true,
         Ok("0") => false,
         _ => std::env::var_os("SSH_CONNECTION").is_some() || std::env::var_os("SSH_TTY").is_some(),

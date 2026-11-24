@@ -1,9 +1,9 @@
-use screen_ascii::video::decode_stream;
 use std::{
     io::Cursor,
     process::Command,
     sync::{Arc, Mutex},
 };
+use termcpy::video::decode_stream;
 
 #[test]
 #[ignore = "requires FFmpeg with libx264 on PATH"]

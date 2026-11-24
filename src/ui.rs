@@ -12,10 +12,6 @@ use crossterm::{
         EnterAlternateScreen, LeaveAlternateScreen,
     },
 };
-use screen_ascii::{
-    fps::FpsMeter, frame::Frame, geometry::Viewport, graphics, input::TouchState, protocol, render,
-    session::Session,
-};
 use std::{
     io::{self, IsTerminal, Write},
     sync::{
@@ -24,6 +20,10 @@ use std::{
     },
     thread,
     time::{Duration, Instant},
+};
+use termcpy::{
+    fps::FpsMeter, frame::Frame, geometry::Viewport, graphics, input::TouchState, protocol, render,
+    session::Session,
 };
 
 pub struct Options {
@@ -402,7 +402,7 @@ impl Screen {
             self.layout = Some(layout);
         }
         let header: String = format!(
-            " screen-ascii | {label} | {}×{} | {}×{} chars",
+            " termcpy | {label} | {}×{} | {}×{} chars",
             frame.width, frame.height, view.cols, view.rows
         )
         .chars()
