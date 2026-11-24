@@ -19,3 +19,7 @@ All notable changes to this project will be documented in this file.
 ### 🚜 Refactor
 
 - Rename screen-ascii to termcpy
+
+### 📚 Documentation
+
+- Update changelog for v0.1.0
