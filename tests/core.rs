@@ -169,3 +169,27 @@ fn ascii_ui_background_is_quiet_and_dark_detail_stays_visible() {
     let output = detailed_lines(&frame, view, " .:-=+*#%@", true, false, Mode::Ascii);
     assert!(output[0].starts_with("\x1b[38;2;110;110;110m "));
 }
+
+#[test]
+fn repeated_colours_are_sent_once_per_line() {
+    use screen_ascii::render::{Mode, detailed_lines};
+    let frame = screen_ascii::frame::Frame {
+        width: 4,
+        height: 2,
+        rgb: [[10, 20, 30]; 8].concat(),
+    };
+    let view = Viewport {
+        x: 0,
+        y: 0,
+        cols: 4,
+        rows: 1,
+        width: 4,
+        height: 2,
+    };
+    let blocks = &detailed_lines(&frame, view, " .#", true, false, Mode::Blocks)[0];
+    assert_eq!(blocks.matches("\x1b[38;2;10;20;30m").count(), 1);
+    assert_eq!(blocks.matches("\x1b[48;2;10;20;30m").count(), 1);
+    assert_eq!(blocks.matches('▀').count(), 4);
+    let ascii = &detailed_lines(&frame, view, " .#", true, false, Mode::Ascii)[0];
+    assert_eq!(ascii.matches("\x1b[38;2;").count(), 1);
+}

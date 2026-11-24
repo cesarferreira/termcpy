@@ -45,12 +45,10 @@ screen-ascii
 screen-ascii --list-devices
 screen-ascii --serial emulator-5554
 
-# Literal ASCII, or a smaller capture at 15 FPS
+# Coloured blocks, literal ASCII, or a smaller capture at 15 FPS
+screen-ascii --render blocks
 screen-ascii --render ascii --no-color
 screen-ascii --max-size 640 --max-fps 15
-
-# Full pixel graphics for readable phone text (Kitty-compatible terminal)
-screen-ascii --render graphics
 
 # Try the renderer without a phone
 screen-ascii --demo
@@ -78,9 +76,13 @@ screen-ascii --snapshot --render ascii --no-color --cols 120 --rows 50
 | `i` | Invert character brightness |
 | `q` / Ctrl+C | Quit |
 
-Use `--render graphics` in a terminal supporting the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/) for full pixel frames and readable text. The app probes support before connecting and reports an error if the terminal does not respond. Graphics uses lossless PNG transmission, fits the image to the terminal, and retains click/drag controls. Capture defaults to a 2048-pixel longest edge; use `--max-size 4096` for more source detail if needed. Maximize the window for more displayed pixels. Graphics requires an interactive Unix terminal and cannot be used with `--snapshot`; terminal multiplexers may need graphics passthrough support.
+The default renderer is full pixel graphics, for readable phone text, in terminals that support the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/). The app probes the terminal before connecting. If the terminal does not confirm support, it uses coloured blocks instead. With an explicit `--render graphics`, a failed probe is an error. Each frame is scaled to the pixels the terminal displays, then sent as zlib-compressed RGB. A frame identical to the one on screen is not sent again. Capture defaults to a 2048-pixel longest edge; use `--max-size 4096` for more source detail if needed. Maximize the window for more displayed pixels. Graphics requires an interactive Unix terminal. `--snapshot` uses blocks unless you choose `--render ascii`. Terminal multiplexers may need graphics passthrough support.
 
-The default renderer uses coloured half-block characters, preserving two independent pixels per terminal cell. Use `--render ascii` for literal ASCII; it suppresses dark background speckle and lifts dim foreground colours. Press `a` to switch modes during a session.
+`--render blocks` uses coloured half-block characters, preserving two independent pixels per terminal cell. Use `--render ascii` for literal ASCII; it suppresses dark background speckle and lifts dim foreground colours. Text modes redraw only the lines that changed. Press `a` to switch modes during a session.
+
+### Over SSH
+
+Every frame crosses the network. When `SSH_CONNECTION` or `SSH_TTY` is set, the defaults change to a 1280-pixel capture at 15 FPS. Locally they are 2048 pixels at 30 FPS. `--max-size` and `--max-fps` override either profile. Set `SCREEN_ASCII_REMOTE=1` or `0` to force the choice, for example inside a multiplexer that hides SSH.
 
 Clicks map to the centre of each character cell. The view preserves the phone's proportions and responds to terminal resizing and device rotation. Reduce the terminal font size for more detail. `--char-aspect` adjusts character proportions (default `0.5`); `--ramp` sets the ASCII characters from dark to bright.
 

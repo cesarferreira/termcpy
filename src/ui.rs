@@ -134,6 +134,7 @@ pub fn run(
     let mut view = None;
     let mut force_draw = true;
     let mut typing: Option<String> = None;
+    let mut screen = Screen::default();
     let interval = Duration::from_secs_f64(1.0 / f64::from(options.fps));
     loop {
         if cancelled.load(Ordering::Relaxed) {
@@ -177,7 +178,7 @@ pub fn run(
                     .as_ref()
                     .map(|session| session.serial.as_str())
                     .unwrap_or("demo");
-                draw(
+                screen.draw(
                     &mut out,
                     &frame,
                     viewport,
@@ -335,67 +336,150 @@ fn send_text(session: &mut Session, mut text: &str) -> Result<()> {
     Ok(())
 }
 
-fn draw(
-    out: &mut impl Write,
-    frame: &Frame,
-    view: Viewport,
-    size: (u16, u16),
-    options: &Options,
-    label: &str,
-    typing: Option<&str>,
-) -> Result<()> {
-    queue!(
-        out,
-        BeginSynchronizedUpdate,
-        ResetColor,
-        SetBackgroundColor(Color::Black),
-        SetForegroundColor(Color::White),
-        MoveTo(0, 0),
-        Clear(ClearType::All)
-    )?;
-    let header = format!(
-        " screen-ascii | {label} | {}×{} | {}×{} chars",
-        frame.width, frame.height, view.cols, view.rows
-    );
-    queue!(
-        out,
-        Print(header.chars().take(size.0 as usize).collect::<String>())
-    )?;
-    if matches!(options.mode, render::Mode::Graphics) {
-        queue!(out, MoveTo(view.x, view.y))?;
-        graphics::write_frame(out, frame, view, options.color, options.invert)?;
-    } else {
-        out.write_all(graphics::DELETE.as_bytes())?;
-    }
-    for (row, line) in render::detailed_lines(
-        frame,
-        view,
-        &options.ramp,
-        options.color,
-        options.invert,
-        options.mode,
-    )
-    .iter()
-    .enumerate()
-    {
-        queue!(out, MoveTo(view.x, view.y + row as u16), Print(line))?;
-    }
-    let footer = typing
-        .map(|text| format!(" Text: {text}  [Enter sends · Esc cancels]"))
-        .unwrap_or_else(|| {
-            " click/drag · b Back · h Home · r Recents · t Type · a Renderer · c Colour · i Invert · q Quit"
-                .to_owned()
+/// What is on the terminal now, so each draw sends only what changed. Over SSH every byte
+/// crosses the network, and a still phone screen should cost nothing.
+/// Terminal size, viewport, renderer, colour and invert: a change redraws everything.
+type Layout = ((u16, u16), Viewport, render::Mode, bool, bool);
+
+#[derive(Default)]
+struct Screen {
+    layout: Option<Layout>,
+    frame: Option<Arc<Frame>>,
+    lines: Vec<String>,
+    header: String,
+    footer: String,
+    canvas: graphics::Canvas,
+}
+
+impl Screen {
+    #[allow(clippy::too_many_arguments)]
+    fn draw(
+        &mut self,
+        out: &mut impl Write,
+        frame: &Arc<Frame>,
+        view: Viewport,
+        size: (u16, u16),
+        options: &Options,
+        label: &str,
+        typing: Option<&str>,
+    ) -> Result<()> {
+        let layout = (size, view, options.mode, options.color, options.invert);
+        let full = self.layout != Some(layout);
+        queue!(out, BeginSynchronizedUpdate)?;
+        if full {
+            queue!(
+                out,
+                ResetColor,
+                SetBackgroundColor(Color::Black),
+                SetForegroundColor(Color::White),
+                MoveTo(0, 0),
+                Clear(ClearType::All)
+            )?;
+            out.write_all(graphics::DELETE.as_bytes())?;
+            self.canvas.reset();
+            self.frame = None;
+            self.lines.clear();
+            self.header.clear();
+            self.footer.clear();
+            self.layout = Some(layout);
+        }
+        let header: String = format!(
+            " screen-ascii | {label} | {}×{} | {}×{} chars",
+            frame.width, frame.height, view.cols, view.rows
+        )
+        .chars()
+        .take(size.0 as usize)
+        .collect();
+        if header != self.header {
+            write_line(out, 0, &header)?;
+            self.header = header;
+        }
+        // Identical decoded frames happen while the phone is still; resending them is waste.
+        let unchanged = self.frame.as_ref().is_some_and(|shown| {
+            Arc::ptr_eq(shown, frame)
+                || ((shown.width, shown.height) == (frame.width, frame.height)
+                    && shown.rgb == frame.rgb)
         });
+        if !unchanged {
+            if matches!(options.mode, render::Mode::Graphics) {
+                queue!(out, MoveTo(view.x, view.y))?;
+                self.canvas.draw(
+                    out,
+                    frame,
+                    view,
+                    pixel_box(view),
+                    options.color,
+                    options.invert,
+                )?;
+            } else {
+                let lines = render::detailed_lines(
+                    frame,
+                    view,
+                    &options.ramp,
+                    options.color,
+                    options.invert,
+                    options.mode,
+                );
+                queue!(
+                    out,
+                    ResetColor,
+                    SetBackgroundColor(Color::Black),
+                    SetForegroundColor(Color::White)
+                )?;
+                for (row, line) in lines.iter().enumerate() {
+                    if self.lines.get(row) != Some(line) {
+                        queue!(out, MoveTo(view.x, view.y + row as u16), Print(line))?;
+                    }
+                }
+                self.lines = lines;
+            }
+            self.frame = Some(Arc::clone(frame));
+        }
+        let footer: String = typing
+            .map(|text| format!(" Text: {text}  [Enter sends · Esc cancels]"))
+            .unwrap_or_else(|| {
+                " click/drag · b Back · h Home · r Recents · t Type · a Renderer · c Colour · i Invert · q Quit"
+                    .to_owned()
+            })
+            .chars()
+            .take(size.0 as usize)
+            .collect();
+        if footer != self.footer {
+            write_line(out, size.1.saturating_sub(1), &footer)?;
+            self.footer = footer;
+        }
+        queue!(out, EndSynchronizedUpdate)?;
+        out.flush().context("draw terminal frame")
+    }
+}
+
+fn write_line(out: &mut impl Write, row: u16, text: &str) -> Result<()> {
     queue!(
         out,
         ResetColor,
         SetBackgroundColor(Color::Black),
         SetForegroundColor(Color::White),
-        MoveTo(0, size.1.saturating_sub(1)),
-        Print(footer.chars().take(size.0 as usize).collect::<String>()),
-        EndSynchronizedUpdate
+        MoveTo(0, row),
+        Clear(ClearType::CurrentLine),
+        Print(text)
     )?;
-    out.flush().context("draw terminal frame")
+    Ok(())
+}
+
+/// The viewport's size in terminal pixels: the most detail the terminal can show. Terminals
+/// that do not report pixels are assumed to use 10×20 cells.
+fn pixel_box(view: Viewport) -> (u32, u32) {
+    let (cell_w, cell_h) = terminal::window_size()
+        .ok()
+        .filter(|size| size.width > 0 && size.height > 0 && size.columns > 0 && size.rows > 0)
+        .map(|size| {
+            (
+                (u32::from(size.width) / u32::from(size.columns)).max(1),
+                (u32::from(size.height) / u32::from(size.rows)).max(1),
+            )
+        })
+        .unwrap_or((10, 20));
+    (u32::from(view.cols) * cell_w, u32::from(view.rows) * cell_h)
 }
 
 fn demo_frame(time: f32) -> Frame {

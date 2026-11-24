@@ -17,8 +17,8 @@ anyhow = "1"
 base64 = "0.22"
 clap = { version = "4", features = ["derive"] }
 crossterm = "0.29"
+flate2 = "1"
 libc = "0.2"
-png = "0.17"
 signal-hook = "0.3"
 
 [profile.release]

@@ -1,7 +1,7 @@
 use crate::{frame::Frame, geometry::Viewport};
 use std::fmt::Write;
 
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub enum Mode {
     Ascii,
     Blocks,
@@ -53,6 +53,8 @@ fn blocks(frame: &Frame, view: Viewport, color: bool, invert: bool) -> Vec<Strin
     (0..usize::from(view.rows))
         .map(|row| {
             let mut line = String::new();
+            // Colours persist between cells, so only send the ones that change.
+            let (mut fg, mut bg) = (None, None);
             for col in 0..usize::from(view.cols) {
                 let mut top = sample(
                     frame,
@@ -76,12 +78,15 @@ fn blocks(frame: &Frame, view: Viewport, color: bool, invert: bool) -> Vec<Strin
                     top = top.map(|v| 255 - v);
                     bottom = bottom.map(|v| 255 - v);
                 }
-                write!(
-                    line,
-                    "\x1b[38;2;{};{};{}m\x1b[48;2;{};{};{}m▀",
-                    top[0], top[1], top[2], bottom[0], bottom[1], bottom[2]
-                )
-                .unwrap();
+                if fg != Some(top) {
+                    write!(line, "\x1b[38;2;{};{};{}m", top[0], top[1], top[2]).unwrap();
+                    fg = Some(top);
+                }
+                if bg != Some(bottom) {
+                    write!(line, "\x1b[48;2;{};{};{}m", bottom[0], bottom[1], bottom[2]).unwrap();
+                    bg = Some(bottom);
+                }
+                line.push('▀');
             }
             line.push_str("\x1b[39m\x1b[48;2;0;0;0m");
             line
@@ -100,6 +105,7 @@ fn ascii_detail(
     (0..view.rows as usize)
         .map(|row| {
             let mut line = String::new();
+            let mut fg = None;
             for col in 0..view.cols as usize {
                 let rgb = sample(frame, col, row, view.cols as usize, view.rows as usize);
                 let brightness = luma(rgb);
@@ -109,12 +115,15 @@ fn ascii_detail(
                 if color {
                     let lift = 110_u8.saturating_sub(brightness);
                     let visible = rgb.map(|v| v.saturating_add(lift));
-                    write!(
-                        line,
-                        "\x1b[38;2;{};{};{}m",
-                        visible[0], visible[1], visible[2]
-                    )
-                    .unwrap();
+                    if fg != Some(visible) {
+                        write!(
+                            line,
+                            "\x1b[38;2;{};{};{}m",
+                            visible[0], visible[1], visible[2]
+                        )
+                        .unwrap();
+                        fg = Some(visible);
+                    }
                 }
                 line.push(character);
             }
